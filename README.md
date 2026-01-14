@@ -1,5 +1,7 @@
 # Kiosk Startup Script (Chromium) – README
 
+***WARNING: This is still under "construction." Items may change. 
+
 This document explains how to set up and use the `start-kiosk.sh` script to automatically launch Chromium in kiosk mode on system boot.
 
 All related files are stored in the same directory:
