@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Evolution of the Automobile (1900–1970)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <style>
+    :root{
+      --green:#2aa64a;          /* button green */
+      --green-dark:#1f7c36;
+      --text:#eef3ef;           /* light text */
+      --muted:#c9d5c9;
+      --bg:#0a120a;             /* very dark green/black */
+      --panel:#121a12;
+      --radius:16px;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .stage{
+      position:relative;
+      height:100vh; width:100vw; overflow:hidden;
+      background: #0c140d url("assets/bg_forest_or_garage.jpg") center/cover no-repeat fixed;
+    }
+    /* translucent vignette to make title readable on any bg */
+    .vignette{
+      position:absolute; inset:0;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,.25) 0%, rgba(0,0,0,.55) 70%, rgba(0,0,0,.75) 100%);
+      pointer-events:none;
+    }
+
+    header.titlebar{
+      position:absolute; left:2vw; right:20vw; top:2vh;
+      display:flex; align-items:center; gap:16px; padding:10px 14px;
+      background:rgba(0,0,0,.35); backdrop-filter: blur(2px);
+      border:1px solid rgba(255,255,255,.12); border-radius:var(--radius);
+    }
+    .brand{display:flex; align-items:center; gap:10px}
+    .brand img{height:52px; width:auto; object-fit:contain; background:#00000033; border-radius:10px}
+    h1{margin:0; font-size: clamp(1.4rem, 3.6vw, 3rem); font-weight:700; letter-spacing:.3px}
+    .hint{margin-left:auto; color:var(--muted); font-size:.95rem}
+
+    /* right-side vertical menu */
+    .side{
+      position:absolute; right:2vw; top:12vh; bottom:4vh;
+      width:min(260px, 26vw); display:flex; flex-direction:column; gap:10px;
+      padding:6px;
+      background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.12); border-radius:var(--radius);
+      overflow:auto;
+    }
+    .btn{
+      display:block; width:100%; text-align:left;
+      padding:14px 16px; font-size:clamp(1rem, 1.6vw, 1.15rem); font-weight:700;
+      color:#071308; background:var(--green); border:none; border-radius:12px; cursor:pointer;
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,.2);
+      touch-action:manipulation;
+    }
+    .btn:active{transform:translateY(1px); background:var(--green-dark)}
+
+    /* grid of car images (center area) */
+    .grid{
+      position:absolute; left:2vw; right:22vw; top:18vh; bottom:6vh;
+      display:grid;
+
+      /* CHANGED: 2 rows of 4 items each */
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+
+      gap:14px; padding:8px;
+      place-items:center;
+      pointer-events:none; /* only car tiles themselves will accept input */
+    }
+
+    .car{
+      position:relative; width:100%; height:100%;
+      display:flex; align-items:center; justify-content:center;
+      pointer-events:auto; cursor:pointer; border-radius:14px;
+      background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.10);
+      transition:transform .08s ease;
+    }
+    .car:active{ transform:scale(0.985) }
+    .car img{
+      max-width:92%; max-height:86%; object-fit:contain;
+      user-select:none; -webkit-user-drag:none; filter: drop-shadow(0 8px 16px rgba(0,0,0,.6));
+    }
+    .label{
+      position:absolute; left:10px; bottom:8px;
+      background:rgba(0,0,0,.55); color:var(--text);
+      padding:4px 8px; border-radius:8px; font-weight:700; font-size:.95rem;
+      border:1px solid rgba(255,255,255,.12);
+      user-select:none;
+    }
+
+    footer.tagline{
+      position:absolute; left:2vw; bottom:2vh;
+      color:var(--muted); font-size:1rem; text-shadow:0 1px 2px #000;
+      background:rgba(0,0,0,.35); padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
+    }
+    .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#1d261e;color:#cfe6d0;border:1px solid #2c3a2e;border-radius:6px;padding:1px 6px}
+
+    /* dialogs */
+    dialog{
+      width:min(900px, 94vw); border:none; border-radius:18px;
+      padding:0; background:var(--panel); color:var(--text);
+      box-shadow: 0 40px 120px rgba(0,0,0,.6);
+    }
+    dialog::backdrop{background:rgba(0,0,0,.6)}
+    .dlg-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08)}
+    .dlg-title{margin:0; font-size:1.3rem}
+    .dlg-close{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,.2);padding:8px 12px;border-radius:10px}
+    .dlg-img{width:100%; max-height:48vh; object-fit:cover; display:block; border-bottom:1px solid rgba(255,255,255,.08)}
+    .dlg-content{padding:16px 18px 22px}
+    .facts{margin:10px 0 0 18px; color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="stage" role="application" aria-label="Evolution of the Automobile kiosk">
+    <div class="vignette" aria-hidden="true"></div>
+
+    <!-- Title & logos -->
+    <header class="titlebar" aria-label="Title bar">
+      <div class="brand">
+        <img src="assets/logo_left.png" alt="Museum logo">
+        <img src="assets/logo_right.png" alt="Exhibit logo">
+      </div>
+      <h1>Evolution of the Automobile (1900–1970)</h1>
+      <div class="hint">Tap a vehicle or a button to learn more</div>
+    </header>
+
+    <!-- Right-side green buttons (mirrors the vehicles below) -->
+    <nav class="side" aria-label="Quick selection">
+      <button class="btn" data-dialog="dlg-1900s-runabout">1900s Runabout</button>
+      <button class="btn" data-dialog="dlg-modelt">Model T (1908)</button>
+      <button class="btn" data-dialog="dlg-1920s-luxury">1920s Luxury Sedan</button>
+      <button class="btn" data-dialog="dlg-1930s-streamline">1930s Streamliner</button>
+      <button class="btn" data-dialog="dlg-1940s-postwar">1940s Post-war</button>
+      <button class="btn" data-dialog="dlg-1950s-fins">1950s Tailfins</button>
+      <button class="btn" data-dialog="dlg-1960s-compact">1960s Compact</button>
+      <button class="btn" data-dialog="dlg-1960s-muscle">1960s Muscle</button>
+    </nav>
+
+    <!-- Center “photo board” of cars -->
+    <main class="grid" aria-label="Vehicle gallery">
+      <figure class="car" data-dialog="dlg-1900s-runabout">
+        <img src="assets/1900s_runabout.png" alt="Early 1900s runabout">
+        <figcaption class="label">1900s Runabout</figcaption>
+      </figure>
+
+      <figure class="car" data-dialog="dlg-modelt">
+        <img src="assets/1908_model_t.png" alt="Ford Model T">
+        <figcaption class="label">Model T (1908)</figcaption>
+      </figure>
+
+      <figure class="car" data-dialog="dlg-1920s-luxury">
+        <img src="assets/1920s_luxury.png" alt="1920s luxury sedan">
+        <figcaption class="label">1920s Luxury</figcaption>
+      </figure>
+
+      <figure class="car" data-dialog="dlg-1930s-streamline">
+        <img src="assets/1930s_streamliner.png" alt="1930s streamlined car">
+        <figcaption class="label">1930s Streamliner</figcaption>
+      </figure>
+
+      <figure class="car" data-dialog="dlg-1940s-postwar">
+        <img src="assets/1940s_postwar.png" alt="1940s post-war sedan">
+        <figcaption class="label">1940s Post-war</figcaption>
+      </figure>
+
+      <figure class="car" data-dialog="dlg-1950s-fins">
+        <img src="assets/1950s_tailfins.png" alt="1950s car with tailfins">
+        <figcaption class="label">1950s Tailfins</figcaption>
+      </figure>
+
+      <figure class="car" data-dialog="dlg-1960s-compact">
+        <img src="assets/1960s_compact.png" alt="1960s compact car">
+        <figcaption class="label">1960s Compact</figcaption>
+      </figure>
+
+      <figure class="car" data-dialog="dlg-1960s-muscle">
+        <img src="assets/1960s_muscle.png" alt="1960s muscle car">
+        <figcaption class="label">1960s Muscle</figcaption>
+      </figure>
+    </main>
+
+    <footer class="tagline">
+      Tap a car to learn quick facts. To exit kiosk use keyboard: <span class="kbd">Super</span> + <span class="kbd">Esc</span>.
+    </footer>
+  </div>
+
+  <!-- DIALOGS -->
+  <dialog id="dlg-1900s-runabout">
+    <img class="dlg-img" src="assets/1900s_runabout_wide.jpg" alt="Early 1900s runabout large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">1900s Runabout</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Small, lightweight “horseless carriages” were simple.</p>
+      <ul class="facts">
+        <li>Common power: single- or twin-cylinder engines, ~6–12 hp</li>
+        <li>Controls varied: tiller or primitive steering wheels</li>
+        <li>Open bodies; pneumatic tires; ~20–30 mph top speed</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-modelt">
+    <img class="dlg-img" src="assets/1908_model_t_wide.jpg" alt="Ford Model T large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">Model T (1908)</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Mass production brought car ownership to the middle class.</p>
+      <ul class="facts">
+        <li>Moving assembly line cut build time from hours to minutes</li>
+        <li>Durable 2.9-L four-cylinder; high ground clearance for rough roads</li>
+        <li>By the mid-1910s the Model T dominated global sales</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-1920s-luxury">
+    <img class="dlg-img" src="assets/1920s_luxury_wide.jpg" alt="1920s luxury sedan large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">1920s Luxury Sedan</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Closed bodies, electric starters, and smoother multi-cylinder engines became common.</p>
+      <ul class="facts">
+        <li>Safety glass, heaters, and better lighting</li>
+        <li>Coachbuilt bodies for the wealthy; standardized sedans for the masses</li>
+        <li>Expanding road networks reshaped cities and tourism</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-1930s-streamline">
+    <img class="dlg-img" src="assets/1930s_streamliner_wide.jpg" alt="1930s streamliner large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">1930s Streamliner</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Wind-tunnel inspired bodies improved speed, economy, and style.</p>
+      <ul class="facts">
+        <li>Integrated fenders, sloped grilles, teardrop cues</li>
+        <li>Independent front suspensions, hydraulic brakes on many models</li>
+        <li>Unit-body experiments hinted at modern construction</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-1940s-postwar">
+    <img class="dlg-img" src="assets/1940s_postwar_wide.jpg" alt="1940s postwar car large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">1940s Post-war</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Production resumed after WWII with updated pre-war designs—then rapid innovation.</p>
+      <ul class="facts">
+        <li>All-steel bodies</li>
+        <li>Automatic transmissions gained popularity</li>
+        <li>Suburban growth fueled car demand</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-1950s-fins">
+    <img class="dlg-img" src="assets/1950s_tailfins_wide.jpg" alt="1950s tailfins large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">1950s Tailfins</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Jet-age styling, V8 power, and comfort features defined the decade.</p>
+      <ul class="facts">
+        <li>Power steering/brakes, air conditioning on upscale models</li>
+        <li>Distinctive tailfins and chrome; highway cruising at last</li>
+        <li>Safety research begins—seat belts spread late in the 1950s</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-1960s-compact">
+    <img class="dlg-img" src="assets/1960s_compact_wide.jpg" alt="1960s compact car large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">1960s Compact</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Smaller, lighter cars responded to urban needs and new buyers.</p>
+      <ul class="facts">
+        <li>Unibody construction commonplace; economical four- and six-cylinders</li>
+        <li>Global influences (European/Japanese designs) reach the U.S.</li>
+        <li>Improved rustproofing and reliability expectations</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-1960s-muscle">
+    <img class="dlg-img" src="assets/1960s_muscle_wide.jpg" alt="1960s muscle car large">
+    <div class="dlg-head">
+      <h3 class="dlg-title">1960s Muscle</h3>
+      <button class="dlg-close" data-close>Close</button>
+    </div>
+    <div class="dlg-content">
+      <p>Affordable high-horsepower cars captured youth culture and motorsport.</p>
+      <ul class="facts">
+        <li>Powerful V8s, bold graphics, and performance packages</li>
+        <li>Pony cars &gt; mid-size platforms with big engines</li>
+        <li>Emissions and safety rules at decade’s end reshaped the market</li>
+      </ul>
+    </div>
+  </dialog>
+
+  <script>
+    // Kiosk niceties
+    window.addEventListener('contextmenu', e => e.preventDefault());
+    ['gesturestart','gesturechange','gestureend','touchstart','touchmove','dblclick'].forEach(evt=>{
+      document.addEventListener(evt, e => { if(e.touches && e.touches.length>1) e.preventDefault(); }, {passive:false});
+    });
+
+    // Open/close dialogs from cars and side buttons
+    const openDlg = id => { const d = document.getElementById(id); if (d && !d.open) d.showModal(); };
+    document.querySelectorAll('[data-dialog]').forEach(el=>{
+      const id = el.getAttribute('data-dialog');
+      el.addEventListener('click', ()=>openDlg(id));
+      el.addEventListener('keydown', e=>{
+        if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openDlg(id); }
+      });
+      el.setAttribute('role','button'); el.tabIndex = 0;
+    });
+
+    document.querySelectorAll('[data-close]').forEach(btn=>{
+      btn.addEventListener('click', ()=>btn.closest('dialog')?.close());
+    });
+
+    document.querySelectorAll('dialog').forEach(dlg=>{
+      // click outside to close
+      dlg.addEventListener('click', e=>{
+        const r = dlg.getBoundingClientRect();
+        const inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+        if(!inside) dlg.close();
+      });
+    });
+
+    // Optional: disable Esc closing dialogs
+    // document.addEventListener('keydown', e=>{ if(e.key==='Escape') e.preventDefault(); });
+  </script>
+</body>
+</html>
