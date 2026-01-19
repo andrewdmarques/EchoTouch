@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
     :root{
-      --green:#2aa64a;          /* button green */
-      --green-dark:#1f7c36;
+      --green:#e8af1b;          /* button color */
+      --green-dark:#c89517;     /* darker shade for press state */
       --text:#eef3ef;           /* light text */
       --muted:#c9d5c9;
       --bg:#0a120a;             /* very dark green/black */
@@ -126,7 +126,7 @@
       <div class="hint">Tap a vehicle or a button to learn more</div>
     </header>
 
-    <!-- Right-side green buttons (mirrors the vehicles below) -->
+    <!-- Right-side buttons (mirrors the vehicles below) -->
     <nav class="side" aria-label="Quick selection">
       <button class="btn" data-dialog="dlg-1900s-runabout">1900s Runabout</button>
       <button class="btn" data-dialog="dlg-modelt">Model T (1908)</button>
@@ -181,9 +181,7 @@
       </figure>
     </main>
 
-    <footer class="tagline">
-      Tap a car to learn quick facts. To exit kiosk use keyboard: <span class="kbd">Super</span> + <span class="kbd">Esc</span>.
-    </footer>
+    <footer class="tagline"></footer>
   </div>
 
   <!-- DIALOGS -->
