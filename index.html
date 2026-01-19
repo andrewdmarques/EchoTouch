@@ -2,351 +2,659 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Evolution of the Automobile (1900–1970)</title>
+  <title>Automobile Evolution — Matching Game</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <style>
     :root{
-      --green:#e8af1b;          /* button color */
-      --green-dark:#c89517;     /* darker shade for press state */
-      --text:#eef3ef;           /* light text */
-      --muted:#c9d5c9;
-      --bg:#0a120a;             /* very dark green/black */
-      --panel:#121a12;
-      --radius:16px;
+      --bg:#000;
+      --panel:rgba(255,255,255,.06);
+      --panel2:rgba(255,255,255,.04);
+      --stroke:rgba(255,255,255,.14);
+      --text:rgba(255,255,255,.92);
+      --muted:rgba(255,255,255,.64);
+      --ok:#59d37a;
+      --bad:#ff6b6b;
+
+      /* dynamic (JS sets) */
+      --rowH: 130px;
+      --gap: 14px;
+      --pad: 14px;
+      --badge: 48px;
+      --badgeRadius: 18px;
+      --descSize: 22px;
+      --hintSize: 16px;
+      --titleSize: 22px;
+      --slotH: 60px;
+
+      /* image behavior (NO CROPPING) */
+      --imgFit: contain;
+      --imgScale: 1.0;
+      --mediaPad: 4px;
+
+      /* make image rows taller than description rows (but keep alignment) */
+      --leftRowBoost: 1.18;
     }
+
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    body{overflow:hidden}
+
+    /* ROTATE WHOLE UI 90deg */
+    .rotWrap{
+      position:fixed;
+      left:0;
+      top:0;
+      width:100vh;
+      height:100vw;
+      transform-origin: top left;
+      transform: rotate(90deg) translateY(-100%);
+      overflow:hidden;
+      background:#000;
+    }
+
+    /* NEW: column layout instead of absolute positioning */
     .stage{
       position:relative;
-      height:100vh; width:100vw; overflow:hidden;
-      background: #0c140d url("assets/bg_forest_or_garage.jpg") center/cover no-repeat fixed;
-    }
-    /* translucent vignette to make title readable on any bg */
-    .vignette{
-      position:absolute; inset:0;
-      background: radial-gradient(ellipse at center, rgba(0,0,0,.25) 0%, rgba(0,0,0,.55) 70%, rgba(0,0,0,.75) 100%);
-      pointer-events:none;
-    }
-
-    header.titlebar{
-      position:absolute; left:2vw; right:20vw; top:2vh;
-      display:flex; align-items:center; gap:16px; padding:10px 14px;
-      background:rgba(0,0,0,.35); backdrop-filter: blur(2px);
-      border:1px solid rgba(255,255,255,.12); border-radius:var(--radius);
-    }
-    .brand{display:flex; align-items:center; gap:10px}
-    .brand img{height:52px; width:auto; object-fit:contain; background:#00000033; border-radius:10px}
-    h1{margin:0; font-size: clamp(1.4rem, 3.6vw, 3rem); font-weight:700; letter-spacing:.3px}
-    .hint{margin-left:auto; color:var(--muted); font-size:.95rem}
-
-    /* right-side vertical menu */
-    .side{
-      position:absolute; right:2vw; top:12vh; bottom:4vh;
-      width:min(260px, 26vw); display:flex; flex-direction:column; gap:10px;
-      padding:6px;
-      background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.12); border-radius:var(--radius);
-      overflow:auto;
-    }
-    .btn{
-      display:block; width:100%; text-align:left;
-      padding:14px 16px; font-size:clamp(1rem, 1.6vw, 1.15rem); font-weight:700;
-      color:#071308; background:var(--green); border:none; border-radius:12px; cursor:pointer;
-      box-shadow: inset 0 -2px 0 rgba(0,0,0,.2);
-      touch-action:manipulation;
-    }
-    .btn:active{transform:translateY(1px); background:var(--green-dark)}
-
-    /* grid of car images (center area) */
-    .grid{
-      position:absolute; left:2vw; right:22vw; top:18vh; bottom:6vh;
-      display:grid;
-
-      /* CHANGED: 2 rows of 4 items each */
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-
-      gap:14px; padding:8px;
-      place-items:center;
-      pointer-events:none; /* only car tiles themselves will accept input */
+      height:100%;
+      width:100%;
+      background:#000;
+      display:flex;
+      flex-direction:column;
+      gap:10px;               /* controls spacing under header */
+      padding:10px 12px;      /* consistent safe padding */
+      min-height:0;
     }
 
-    .car{
-      position:relative; width:100%; height:100%;
-      display:flex; align-items:center; justify-content:center;
-      pointer-events:auto; cursor:pointer; border-radius:14px;
-      background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.10);
-      transition:transform .08s ease;
+    .top{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--stroke);
+      flex:0 0 auto;
     }
-    .car:active{ transform:scale(0.985) }
-    .car img{
-      max-width:92%; max-height:86%; object-fit:contain;
-      user-select:none; -webkit-user-drag:none; filter: drop-shadow(0 8px 16px rgba(0,0,0,.6));
+
+    .title{
+      font-weight:950;
+      letter-spacing:.2px;
+      font-size:var(--titleSize);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:62%;
     }
-    .label{
-      position:absolute; left:10px; bottom:8px;
-      background:rgba(0,0,0,.55); color:var(--text);
-      padding:4px 8px; border-radius:8px; font-weight:700; font-size:.95rem;
+
+    .meta{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:var(--muted);
+      font-weight:900;
+      font-size:var(--hintSize);
+      white-space:nowrap;
+    }
+
+    .pill{
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(255,255,255,.05);
       border:1px solid rgba(255,255,255,.12);
+    }
+
+    /* NEW: game is now normal flow + flex fill */
+    .game{
+      width:100%;
+      display:grid;
+      grid-template-columns: 1.10fr 1.40fr;
+      gap:var(--gap);
+      flex:1 1 auto;
+      min-height:0;
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--stroke);
+      border-radius:18px;
+      padding:var(--pad);
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .panelHeader{
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:10px;
+      padding:4px 4px 12px 4px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      margin-bottom:12px;
+    }
+
+    .panelHeader .h{
+      font-weight:950;
+      letter-spacing:.2px;
+      font-size:calc(var(--hintSize) + 4px);
+    }
+
+    .panelHeader .hint{
+      color:var(--muted);
+      font-weight:900;
+      font-size:var(--hintSize);
+      white-space:nowrap;
+    }
+
+    .imageList,.cards{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow:auto;
+      padding-right:4px;
+      flex:1;
+      min-height:0;
+    }
+
+    .tile{
+      height:calc(var(--rowH) * var(--leftRowBoost));
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background:var(--panel2);
+      padding:10px;
+      display:grid;
+      grid-template-columns: var(--badge) 1fr;
+      gap:12px;
+      align-items:stretch;
+      cursor:grab;
       user-select:none;
+      touch-action:none;
+      transition:transform .12s ease, border-color .12s ease, background .12s ease, opacity .12s ease;
     }
 
-    footer.tagline{
-      position:absolute; left:2vw; bottom:2vh;
-      color:var(--muted); font-size:1rem; text-shadow:0 1px 2px #000;
-      background:rgba(0,0,0,.35); padding:8px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12);
-    }
-    .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#1d261e;color:#cfe6d0;border:1px solid #2c3a2e;border-radius:6px;padding:1px 6px}
+    .tile:active{cursor:grabbing}
+    .tile:hover{border-color:rgba(255,255,255,.22)}
+    .tile.locked{cursor:default;opacity:.45;filter:saturate(.85)}
 
-    /* dialogs */
-    dialog{
-      width:min(900px, 94vw); border:none; border-radius:18px;
-      padding:0; background:var(--panel); color:var(--text);
-      box-shadow: 0 40px 120px rgba(0,0,0,.6);
+    .badge{
+      width:var(--badge);
+      height:var(--badge);
+      border-radius:var(--badgeRadius);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:950;
+      letter-spacing:.3px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+      color:rgba(255,255,255,.86);
+      flex:0 0 auto;
+      font-size:calc(var(--hintSize) + 2px);
+      align-self:center;
     }
-    dialog::backdrop{background:rgba(0,0,0,.6)}
-    .dlg-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,.08)}
-    .dlg-title{margin:0; font-size:1.3rem}
-    .dlg-close{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,.2);padding:8px 12px;border-radius:10px}
-    .dlg-img{width:100%; max-height:48vh; object-fit:cover; display:block; border-bottom:1px solid rgba(255,255,255,.08)}
-    .dlg-content{padding:16px 18px 22px}
-    .facts{margin:10px 0 0 18px; color:var(--muted)}
+
+    .tileMedia{
+      height:100%;
+      width:100%;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.22);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      padding:var(--mediaPad);
+    }
+
+    .tile img{
+      width:100%;
+      height:100%;
+      object-fit:var(--imgFit);
+      transform:scale(var(--imgScale));
+      transform-origin:center;
+      filter: drop-shadow(0 12px 20px rgba(0,0,0,.65));
+      pointer-events:none;
+      -webkit-user-drag:none;
+    }
+
+    .card{
+      min-height:var(--rowH);
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.03);
+      padding:10px;
+      display:grid;
+      grid-template-columns: var(--badge) 1fr;
+      gap:12px;
+      align-items:stretch;
+      transition:border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+    }
+
+    .cardMain{
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      min-height:0;
+      gap:12px;
+    }
+
+    .desc{
+      color:rgba(255,255,255,.92);
+      font-size:var(--descSize);
+      line-height:1.22;
+      font-weight:800;
+    }
+
+    .slot{
+      height:var(--slotH);
+      border-radius:16px;
+      border:2px dashed rgba(255,255,255,.28);
+      background:rgba(255,255,255,.03);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      overflow:hidden;
+    }
+
+    .slot::before{
+      content:"Drop image here";
+      color:rgba(255,255,255,.58);
+      font-weight:950;
+      letter-spacing:.2px;
+      font-size:var(--hintSize);
+    }
+
+    .slot img{
+      height:calc(var(--slotH) - 14px);
+      width:auto;
+      object-fit:contain;
+      filter: drop-shadow(0 10px 16px rgba(0,0,0,.65));
+    }
+
+    .card.drop-armed{
+      border-color:rgba(255,255,255,.24);
+      box-shadow:0 22px 54px rgba(0,0,0,.58);
+      transform:scale(1.01);
+    }
+
+    .card.correct{border-color:rgba(89,211,122,.58)}
+    .card.wrong{border-color:rgba(255,107,107,.58)}
+
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    button{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:950;
+      padding:12px 16px;
+      border-radius:999px;
+      cursor:pointer;
+      transition:transform .12s ease, background .12s ease, border-color .12s ease;
+      font-size:var(--hintSize);
+    }
+
+    button:hover{border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.08)}
+    button:active{transform:translateY(1px)}
+
+    .toast{
+      position:absolute;
+      left:50%;
+      bottom:10px;
+      transform:translateX(-50%);
+      border-radius:999px;
+      padding:12px 16px;
+      font-weight:950;
+      letter-spacing:.2px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.14);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .15s ease, transform .15s ease;
+      z-index:10;
+      color:var(--text);
+      white-space:nowrap;
+      font-size:var(--hintSize);
+    }
+
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px)}
+    .toast.ok{border-color:rgba(89,211,122,.45); color:var(--ok)}
+    .toast.bad{border-color:rgba(255,107,107,.45); color:var(--bad)}
+
+    @media (max-width: 640px){
+      .game{grid-template-columns:1fr;}
+      .title{max-width:72%}
+      .tile{height:calc(var(--rowH) * 1.08);}
+    }
+
+    .imageList::-webkit-scrollbar, .cards::-webkit-scrollbar{ width:12px; }
+    .imageList::-webkit-scrollbar-thumb, .cards::-webkit-scrollbar-thumb{
+      background:rgba(255,255,255,.10);
+      border-radius:999px;
+      border:2px solid rgba(0,0,0,.35);
+    }
   </style>
 </head>
 <body>
-  <div class="stage" role="application" aria-label="Evolution of the Automobile kiosk">
-    <div class="vignette" aria-hidden="true"></div>
-
-    <!-- Title & logos -->
-    <header class="titlebar" aria-label="Title bar">
-      <div class="brand">
-        <img src="assets/logo_left.png" alt="Museum logo">
-        <img src="assets/logo_right.png" alt="Exhibit logo">
+  <div class="rotWrap">
+    <div class="stage" role="application" aria-label="Automobile matching game">
+      <div class="top" aria-label="Game header" id="topBar">
+        <div class="title">Match images to descriptions</div>
+        <div class="meta">
+          <div class="pill" id="scoreText">0 / 6</div>
+          <div class="pill">Drag left → right</div>
+        </div>
       </div>
-      <h1>Evolution of the Automobile (1900–1970)</h1>
-      <div class="hint">Tap a vehicle or a button to learn more</div>
-    </header>
 
-    <!-- Right-side buttons (mirrors the vehicles below) -->
-    <nav class="side" aria-label="Quick selection">
-      <button class="btn" data-dialog="dlg-1900s-runabout">1900s Runabout</button>
-      <button class="btn" data-dialog="dlg-modelt">Model T (1908)</button>
-      <button class="btn" data-dialog="dlg-1920s-luxury">1920s Luxury Sedan</button>
-      <button class="btn" data-dialog="dlg-1930s-streamline">1930s Streamliner</button>
-      <button class="btn" data-dialog="dlg-1940s-postwar">1940s Post-war</button>
-      <button class="btn" data-dialog="dlg-1950s-fins">1950s Tailfins</button>
-      <button class="btn" data-dialog="dlg-1960s-compact">1960s Compact</button>
-      <button class="btn" data-dialog="dlg-1960s-muscle">1960s Muscle</button>
-    </nav>
+      <section class="game" aria-label="Game area" id="game">
+        <div class="panel" aria-label="Images">
+          <div class="panelHeader">
+            <div class="h">Images</div>
+            <div class="hint">6 items</div>
+          </div>
+          <div id="imageList" class="imageList" aria-label="Image list"></div>
+          <div class="actions">
+            <button id="resetBtn" type="button">Reset</button>
+          </div>
+        </div>
 
-    <!-- Center “photo board” of cars -->
-    <main class="grid" aria-label="Vehicle gallery">
-      <figure class="car" data-dialog="dlg-1900s-runabout">
-        <img src="assets/1900s_runabout.png" alt="Early 1900s runabout">
-        <figcaption class="label">1900s Runabout</figcaption>
-      </figure>
+        <div class="panel" aria-label="Descriptions">
+          <div class="panelHeader">
+            <div class="h">Descriptions</div>
+            <div class="hint">Drop the match</div>
+          </div>
+          <div id="cards" class="cards" aria-label="Description list"></div>
+        </div>
+      </section>
 
-      <figure class="car" data-dialog="dlg-modelt">
-        <img src="assets/1908_model_t.png" alt="Ford Model T">
-        <figcaption class="label">Model T (1908)</figcaption>
-      </figure>
-
-      <figure class="car" data-dialog="dlg-1920s-luxury">
-        <img src="assets/1920s_luxury.png" alt="1920s luxury sedan">
-        <figcaption class="label">1920s Luxury</figcaption>
-      </figure>
-
-      <figure class="car" data-dialog="dlg-1930s-streamline">
-        <img src="assets/1930s_streamliner.png" alt="1930s streamlined car">
-        <figcaption class="label">1930s Streamliner</figcaption>
-      </figure>
-
-      <figure class="car" data-dialog="dlg-1940s-postwar">
-        <img src="assets/1940s_postwar.png" alt="1940s post-war sedan">
-        <figcaption class="label">1940s Post-war</figcaption>
-      </figure>
-
-      <figure class="car" data-dialog="dlg-1950s-fins">
-        <img src="assets/1950s_tailfins.png" alt="1950s car with tailfins">
-        <figcaption class="label">1950s Tailfins</figcaption>
-      </figure>
-
-      <figure class="car" data-dialog="dlg-1960s-compact">
-        <img src="assets/1960s_compact.png" alt="1960s compact car">
-        <figcaption class="label">1960s Compact</figcaption>
-      </figure>
-
-      <figure class="car" data-dialog="dlg-1960s-muscle">
-        <img src="assets/1960s_muscle.png" alt="1960s muscle car">
-        <figcaption class="label">1960s Muscle</figcaption>
-      </figure>
-    </main>
-
-    <footer class="tagline"></footer>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
   </div>
 
-  <!-- DIALOGS -->
-  <dialog id="dlg-1900s-runabout">
-    <img class="dlg-img" src="assets/1900s_runabout_wide.jpg" alt="Early 1900s runabout large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">1900s Runabout</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Small, lightweight “horseless carriages” were simple.</p>
-      <ul class="facts">
-        <li>Common power: single- or twin-cylinder engines, ~6–12 hp</li>
-        <li>Controls varied: tiller or primitive steering wheels</li>
-        <li>Open bodies; pneumatic tires; ~20–30 mph top speed</li>
-      </ul>
-    </div>
-  </dialog>
-
-  <dialog id="dlg-modelt">
-    <img class="dlg-img" src="assets/1908_model_t_wide.jpg" alt="Ford Model T large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">Model T (1908)</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Mass production brought car ownership to the middle class.</p>
-      <ul class="facts">
-        <li>Moving assembly line cut build time from hours to minutes</li>
-        <li>Durable 2.9-L four-cylinder; high ground clearance for rough roads</li>
-        <li>By the mid-1910s the Model T dominated global sales</li>
-      </ul>
-    </div>
-  </dialog>
-
-  <dialog id="dlg-1920s-luxury">
-    <img class="dlg-img" src="assets/1920s_luxury_wide.jpg" alt="1920s luxury sedan large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">1920s Luxury Sedan</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Closed bodies, electric starters, and smoother multi-cylinder engines became common.</p>
-      <ul class="facts">
-        <li>Safety glass, heaters, and better lighting</li>
-        <li>Coachbuilt bodies for the wealthy; standardized sedans for the masses</li>
-        <li>Expanding road networks reshaped cities and tourism</li>
-      </ul>
-    </div>
-  </dialog>
-
-  <dialog id="dlg-1930s-streamline">
-    <img class="dlg-img" src="assets/1930s_streamliner_wide.jpg" alt="1930s streamliner large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">1930s Streamliner</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Wind-tunnel inspired bodies improved speed, economy, and style.</p>
-      <ul class="facts">
-        <li>Integrated fenders, sloped grilles, teardrop cues</li>
-        <li>Independent front suspensions, hydraulic brakes on many models</li>
-        <li>Unit-body experiments hinted at modern construction</li>
-      </ul>
-    </div>
-  </dialog>
-
-  <dialog id="dlg-1940s-postwar">
-    <img class="dlg-img" src="assets/1940s_postwar_wide.jpg" alt="1940s postwar car large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">1940s Post-war</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Production resumed after WWII with updated pre-war designs—then rapid innovation.</p>
-      <ul class="facts">
-        <li>All-steel bodies</li>
-        <li>Automatic transmissions gained popularity</li>
-        <li>Suburban growth fueled car demand</li>
-      </ul>
-    </div>
-  </dialog>
-
-  <dialog id="dlg-1950s-fins">
-    <img class="dlg-img" src="assets/1950s_tailfins_wide.jpg" alt="1950s tailfins large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">1950s Tailfins</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Jet-age styling, V8 power, and comfort features defined the decade.</p>
-      <ul class="facts">
-        <li>Power steering/brakes, air conditioning on upscale models</li>
-        <li>Distinctive tailfins and chrome; highway cruising at last</li>
-        <li>Safety research begins—seat belts spread late in the 1950s</li>
-      </ul>
-    </div>
-  </dialog>
-
-  <dialog id="dlg-1960s-compact">
-    <img class="dlg-img" src="assets/1960s_compact_wide.jpg" alt="1960s compact car large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">1960s Compact</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Smaller, lighter cars responded to urban needs and new buyers.</p>
-      <ul class="facts">
-        <li>Unibody construction commonplace; economical four- and six-cylinders</li>
-        <li>Global influences (European/Japanese designs) reach the U.S.</li>
-        <li>Improved rustproofing and reliability expectations</li>
-      </ul>
-    </div>
-  </dialog>
-
-  <dialog id="dlg-1960s-muscle">
-    <img class="dlg-img" src="assets/1960s_muscle_wide.jpg" alt="1960s muscle car large">
-    <div class="dlg-head">
-      <h3 class="dlg-title">1960s Muscle</h3>
-      <button class="dlg-close" data-close>Close</button>
-    </div>
-    <div class="dlg-content">
-      <p>Affordable high-horsepower cars captured youth culture and motorsport.</p>
-      <ul class="facts">
-        <li>Powerful V8s, bold graphics, and performance packages</li>
-        <li>Pony cars &gt; mid-size platforms with big engines</li>
-        <li>Emissions and safety rules at decade’s end reshaped the market</li>
-      </ul>
-    </div>
-  </dialog>
-
   <script>
-    // Kiosk niceties
-    window.addEventListener('contextmenu', e => e.preventDefault());
-    ['gesturestart','gesturechange','gestureend','touchstart','touchmove','dblclick'].forEach(evt=>{
-      document.addEventListener(evt, e => { if(e.touches && e.touches.length>1) e.preventDefault(); }, {passive:false});
-    });
+    const vehicles = [
+      { id:"runabout",   name:"1900s Runabout",     img:"assets/1900s_runabout.png",    desc:"Small, lightweight “horseless carriages” were simple; early controls and modest top speeds." },
+      { id:"modelt",     name:"Model T (1908)",     img:"assets/1908_model_t.png",      desc:"Mass production helped make car ownership affordable; durable and suited to rough roads." },
+      { id:"streamline", name:"1930s Streamliner",  img:"assets/1930s_streamliner.png", desc:"Streamlined bodies improved efficiency and style; modern brakes and suspension spread." },
+      { id:"postwar",    name:"1940s Post-war",     img:"assets/1940s_postwar.png",     desc:"Post-WWII production surged; all-steel bodies and automatic transmissions gained popularity." },
+      { id:"tailfins",   name:"1950s Tailfins",     img:"assets/1950s_tailfins.png",    desc:"Jet-age styling and V8 power; comfort features grew as safety research began influencing design." },
+      { id:"compact",    name:"1960s Compact",      img:"assets/1960s_compact.png",     desc:"Smaller, lighter cars for cities and new buyers; economy and everyday practicality improved." },
+    ];
 
-    // Open/close dialogs from cars and side buttons
-    const openDlg = id => { const d = document.getElementById(id); if (d && !d.open) d.showModal(); };
-    document.querySelectorAll('[data-dialog]').forEach(el=>{
-      const id = el.getAttribute('data-dialog');
-      el.addEventListener('click', ()=>openDlg(id));
-      el.addEventListener('keydown', e=>{
-        if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openDlg(id); }
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const el = (tag, props={}) => Object.assign(document.createElement(tag), props);
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]]=[a[j],a[i]];
+      }
+      return a;
+    }
+
+    let toastTimer = null;
+    function showToast(msg, type=""){
+      const t = $("#toast");
+      t.textContent = msg;
+      t.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(()=> t.className = `toast ${type}`, 900);
+    }
+
+    function setProgress(){
+      const total = vehicles.length;
+      const correct = document.querySelectorAll(".card.correct").length;
+      $("#scoreText").textContent = `${correct} / ${total}`;
+      if(correct === total) showToast("Complete", "ok");
+    }
+
+    const imageList = $("#imageList");
+    const cards = $("#cards");
+    const LETTERS = ["A","B","C","D","E","F"];
+
+    function buildImages(order){
+      imageList.innerHTML = "";
+      order.forEach((v, idx) => {
+        const tile = el("div");
+        tile.className = "tile";
+        tile.dataset.id = v.id;
+        tile.draggable = true;
+
+        const badge = el("div", { className:"badge", textContent: LETTERS[idx] || "•" });
+        const media = el("div", { className:"tileMedia" });
+        media.appendChild(el("img", { src:v.img, alt:v.name }));
+
+        tile.appendChild(badge);
+        tile.appendChild(media);
+
+        tile.addEventListener("dragstart", (e)=>{
+          if(tile.classList.contains("locked")) { e.preventDefault(); return; }
+          e.dataTransfer.setData("text/plain", v.id);
+          e.dataTransfer.effectAllowed = "move";
+        });
+
+        attachPointerDrag(tile);
+        imageList.appendChild(tile);
       });
-      el.setAttribute('role','button'); el.tabIndex = 0;
-    });
+    }
 
-    document.querySelectorAll('[data-close]').forEach(btn=>{
-      btn.addEventListener('click', ()=>btn.closest('dialog')?.close());
-    });
+    function buildCards(order){
+      cards.innerHTML = "";
+      order.forEach((v, idx)=>{
+        const card = el("div");
+        card.className = "card";
+        card.dataset.accept = v.id;
 
-    document.querySelectorAll('dialog').forEach(dlg=>{
-      // click outside to close
-      dlg.addEventListener('click', e=>{
-        const r = dlg.getBoundingClientRect();
-        const inside = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
-        if(!inside) dlg.close();
+        const badge = el("div", { className:"badge", textContent: String(idx + 1) });
+        const main = el("div", { className:"cardMain" });
+        main.appendChild(el("div", { className:"desc", textContent:v.desc }));
+
+        const slot = el("div", { className:"slot" });
+        main.appendChild(slot);
+
+        card.appendChild(badge);
+        card.appendChild(main);
+
+        card.addEventListener("dragover", (e)=>{
+          e.preventDefault();
+          if(card.classList.contains("correct")) return;
+          card.classList.add("drop-armed");
+          e.dataTransfer.dropEffect = "move";
+        });
+
+        card.addEventListener("dragleave", ()=> card.classList.remove("drop-armed"));
+
+        card.addEventListener("drop", (e)=>{
+          e.preventDefault();
+          card.classList.remove("drop-armed");
+          if(card.classList.contains("correct")) return;
+          const id = e.dataTransfer.getData("text/plain");
+          tryMatch(id, card);
+        });
+
+        cards.appendChild(card);
       });
+      setProgress();
+    }
+
+    function tryMatch(id, card){
+      if(!id || card.classList.contains("correct")) return;
+      if(id === card.dataset.accept){
+        markCorrect(id, card);
+        showToast("Matched", "ok");
+      }else{
+        card.classList.add("wrong");
+        showToast("Not a match", "bad");
+        setTimeout(()=>card.classList.remove("wrong"), 320);
+      }
+      setProgress();
+    }
+
+    function markCorrect(id, card){
+      card.classList.add("correct");
+      const slot = $(".slot", card);
+      slot.innerHTML = "";
+      slot.style.border = "2px solid rgba(89,211,122,.35)";
+      slot.style.background = "rgba(89,211,122,.06)";
+
+      const v = vehicles.find(x=>x.id===id);
+      slot.appendChild(el("img", { src:v.img, alt:v.name }));
+      slot.setAttribute("aria-label", "Matched");
+
+      const tile = imageList.querySelector(`.tile[data-id="${id}"]`);
+      if(tile){
+        tile.classList.add("locked");
+        tile.draggable = false;
+      }
+    }
+
+    function attachPointerDrag(tile){
+      let ghost = null;
+      let active = false;
+
+      function cleanup(){
+        active = false;
+        if(ghost){ ghost.remove(); ghost = null; }
+        document.body.style.cursor = "";
+        document.querySelectorAll(".card").forEach(c=>c.classList.remove("drop-armed"));
+      }
+
+      tile.addEventListener("pointerdown", (e)=>{
+        if(tile.classList.contains("locked")) return;
+        if(e.pointerType === "mouse" && e.button !== 0) return;
+
+        active = true;
+        tile.setPointerCapture(e.pointerId);
+
+        const r = tile.getBoundingClientRect();
+        ghost = tile.cloneNode(true);
+        ghost.style.position = "fixed";
+        ghost.style.left = (e.clientX - r.width/2) + "px";
+        ghost.style.top  = (e.clientY - r.height/2) + "px";
+        ghost.style.width  = r.width + "px";
+        ghost.style.height = r.height + "px";
+        ghost.style.zIndex = "9999";
+        ghost.style.opacity = "0.95";
+        ghost.style.pointerEvents = "none";
+        ghost.style.transform = "scale(1.02)";
+        document.body.appendChild(ghost);
+
+        document.body.style.cursor = "grabbing";
+        e.preventDefault();
+      });
+
+      tile.addEventListener("pointermove", (e)=>{
+        if(!active || !ghost) return;
+        const r = ghost.getBoundingClientRect();
+        ghost.style.left = (e.clientX - r.width/2) + "px";
+        ghost.style.top  = (e.clientY - r.height/2) + "px";
+
+        const card = cardFromPoint(e.clientX, e.clientY);
+        document.querySelectorAll(".card").forEach(c=>c.classList.remove("drop-armed"));
+        if(card && !card.classList.contains("correct")) card.classList.add("drop-armed");
+      });
+
+      tile.addEventListener("pointerup", (e)=>{
+        if(!active) return;
+        const card = cardFromPoint(e.clientX, e.clientY);
+        if(card && !card.classList.contains("correct")){
+          tryMatch(tile.dataset.id, card);
+        }else{
+          showToast("Drop on a description slot", "");
+        }
+        cleanup();
+      });
+
+      tile.addEventListener("pointercancel", cleanup);
+    }
+
+    function cardFromPoint(x,y){
+      const elem = document.elementFromPoint(x,y);
+      return elem ? elem.closest(".card") : null;
+    }
+
+    function resetGame(){
+      const imgOrder = shuffle(vehicles);
+      const descOrder = shuffle(vehicles);
+      buildImages(imgOrder);
+      buildCards(descOrder);
+      showToast("Reset", "");
+      requestAnimationFrame(()=>{ applyPortraitSizing(); });
+    }
+
+    $("#resetBtn").addEventListener("click", resetGame);
+
+    window.addEventListener("contextmenu", e => e.preventDefault());
+    ["gesturestart","gesturechange","gestureend","touchmove","dblclick"].forEach(evt=>{
+      document.addEventListener(evt, e => {
+        if((e.touches && e.touches.length>1) || evt==="dblclick") e.preventDefault();
+      }, {passive:false});
     });
 
-    // Optional: disable Esc closing dialogs
-    // document.addEventListener('keydown', e=>{ if(e.key==='Escape') e.preventDefault(); });
+    // Sizing: now uses stage height (no header measurement needed)
+    function applyPortraitSizing(){
+      const root = document.documentElement;
+      const stage = document.querySelector(".stage");
+      const vh = stage ? stage.clientHeight : window.innerHeight;
+
+      const game = $("#game");
+      const leftPanel = game.querySelectorAll(".panel")[0];
+      const rightPanel = game.querySelectorAll(".panel")[1];
+
+      const leftHeader = leftPanel.querySelector(".panelHeader").getBoundingClientRect().height;
+      const rightHeader = rightPanel.querySelector(".panelHeader").getBoundingClientRect().height;
+      const leftActions = leftPanel.querySelector(".actions").getBoundingClientRect().height;
+
+      const leftAvail  = leftPanel.clientHeight  - leftHeader - leftActions - 2*14 - 16;
+      const rightAvail = rightPanel.clientHeight - rightHeader - 2*14 - 16;
+
+      const rows = 6;
+      const rowGap = 10;
+
+      const rightRowBase = (rightAvail - (rows-1)*rowGap) / rows;
+      let rowH = clamp(Math.floor(rightRowBase), 102, 170);
+
+      const maxLeftRowH = (leftAvail - (rows-1)*rowGap) / rows;
+      const maxBoost = clamp(maxLeftRowH / Math.max(1, rowH), 1.0, 1.45);
+      const leftBoost = Math.min(1.25, maxBoost);
+
+      const descSize  = clamp(Math.round(vh * 0.0225), 18, 32);
+      const hintSize  = clamp(Math.round(vh * 0.0175), 14, 24);
+      const titleSize = clamp(Math.round(vh * 0.0245), 18, 34);
+
+      const badge = clamp(Math.round(rowH * 0.42), 42, 70);
+      const badgeRadius = clamp(Math.round(badge * 0.36), 14, 24);
+      const slotH = clamp(Math.round(rowH * 0.52), 52, 86);
+
+      root.style.setProperty("--rowH", rowH + "px");
+      root.style.setProperty("--leftRowBoost", leftBoost.toFixed(3));
+      root.style.setProperty("--descSize", descSize + "px");
+      root.style.setProperty("--hintSize", hintSize + "px");
+      root.style.setProperty("--titleSize", titleSize + "px");
+      root.style.setProperty("--badge", badge + "px");
+      root.style.setProperty("--badgeRadius", badgeRadius + "px");
+      root.style.setProperty("--slotH", slotH + "px");
+
+      root.style.setProperty("--mediaPad", (rowH >= 150 ? 3 : 4) + "px");
+      root.style.setProperty("--imgFit", "contain");
+      root.style.setProperty("--imgScale", "1.0");
+    }
+
+    window.addEventListener("resize", ()=> requestAnimationFrame(applyPortraitSizing));
+
+    resetGame();
+    requestAnimationFrame(applyPortraitSizing);
   </script>
 </body>
 </html>
-
